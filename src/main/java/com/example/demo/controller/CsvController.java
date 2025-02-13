@@ -1,9 +1,6 @@
 package com.example.demo.controller;
 
-import com.example.demo.exception.CsvProcessingException;
-import com.example.demo.exception.FileProcessingException;
 import com.example.demo.service.CsvService;
-import com.opencsv.exceptions.CsvException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.slf4j.Logger;
@@ -16,8 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-
 @RestController
 @RequestMapping("/api/csv")
 public class CsvController {
@@ -28,6 +23,12 @@ public class CsvController {
     this.csvService = csvService;
   }
 
+  /**
+   * Uploads a CSV file and processes the data.
+   *
+   * @param file The CSV file to upload
+   * @return A response entity with a success message
+   */
   @PostMapping("/upload")
   public ResponseEntity<String> uploadMultipartFile(@RequestParam("file") @Valid @NotEmpty MultipartFile file) {
     log.info("Received file upload request.");

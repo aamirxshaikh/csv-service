@@ -36,6 +36,11 @@ public class CsvService {
     this.userRepository = userRepository;
   }
 
+  /**
+   * Uploads a CSV file and processes the data.
+   *
+   * @param file The CSV file to upload
+   */
   @Transactional
   public void uploadMultipartFile(MultipartFile file) {
     validateFile(file);
@@ -49,6 +54,13 @@ public class CsvService {
     }
   }
 
+  /**
+   * Reads the data from the CSV file and persists it to the database.
+   *
+   * @param inputStream The input stream of the CSV file
+   * @throws IOException  If an I/O error occurs
+   * @throws CsvException If an error occurs while parsing the CSV file
+   */
   private void readAndPersistData(InputStream inputStream) throws IOException, CsvException {
     log.info("Starting to upload CSV file...");
 
@@ -73,6 +85,9 @@ public class CsvService {
     log.info("CSV file processed and users persisted successfully.");
   }
 
+  /**
+   * Processes the data from a scheduled file.
+   */
   @Async
   @Scheduled(fixedRate = 10000)
   public void processFileFromLocation() {
@@ -92,6 +107,11 @@ public class CsvService {
     }
   }
 
+  /**
+   * Validates the uploaded file.
+   *
+   * @param file The file to validate
+   */
   private void validateFile(MultipartFile file) {
     if (file.isEmpty()) {
       throw new InvalidFileException("File is empty");
