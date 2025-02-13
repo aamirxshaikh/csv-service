@@ -1,0 +1,49 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/mapper/
+src/test/java/com/clinicwave/clinicwaveusermanagementservice/mapper/
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/service/PermissionService.java
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/service/RoleService.java
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/service/UserTypeService.java
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/service/impl/PermissionServiceImpl.java
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/service/impl/RoleServiceImpl.java
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/service/impl/UserTypeServiceImpl.java
+src/test/java/com/clinicwave/clinicwaveusermanagementservice/service/impl/PermissionServiceImplTest.java
+src/test/java/com/clinicwave/clinicwaveusermanagementservice/service/impl/RoleServiceImplTest.java
+src/test/java/com/clinicwave/clinicwaveusermanagementservice/service/impl/UserTypeServiceImplTest.java
+src/main/java/com/clinicwave/clinicwaveusermanagementservice/util/UrlUtil.java
+src/test/java/com/clinicwave/clinicwaveusermanagementservice/util/UrlUtilTest.java
+src/test/java/com/clinicwave/clinicwaveusermanagementservice/controller/VerificationCodeControllerTest.java
+src/test/java/com/clinicwave/clinicwaveusermanagementservice/controller/VerificationCodeControllerTestV2.java
