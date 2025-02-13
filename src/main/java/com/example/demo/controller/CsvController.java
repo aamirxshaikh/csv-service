@@ -32,14 +32,8 @@ public class CsvController {
   public ResponseEntity<String> uploadMultipartFile(@RequestParam("file") @Valid @NotEmpty MultipartFile file) {
     log.info("Received file upload request.");
 
-    try {
-      csvService.uploadMultipartFile(file);
-      log.info("CSV file processed successfully and data persisted.");
-      return new ResponseEntity<>("CSV file uploaded and data persisted successfully!", HttpStatus.OK);
-    } catch (IOException e) {
-      throw new FileProcessingException("Error processing file " + e.getMessage());
-    } catch (CsvException e) {
-      throw new CsvProcessingException("Error processing CSV file: " + e.getMessage());
-    }
+    csvService.uploadMultipartFile(file);
+    log.info("CSV file processed successfully and data persisted.");
+    return new ResponseEntity<>("CSV file uploaded and data persisted successfully!", HttpStatus.OK);
   }
 }

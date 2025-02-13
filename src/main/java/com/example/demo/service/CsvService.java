@@ -1,9 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.User;
+import com.example.demo.exception.CsvProcessingException;
+import com.example.demo.exception.FileProcessingException;
+import com.example.demo.exception.InvalidFileException;
 import com.example.demo.repository.UserRepository;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,54 +22,74 @@ import java.util.List;
 
 @Service
 public class CsvService {
-    private static final Logger log = LoggerFactory.getLogger(CsvService.class);
-    private final UserRepository userRepository;
-    private static final String FILE_PATH = "/data.csv";
+  private static final Logger log = LoggerFactory.getLogger(CsvService.class);
+  private final UserRepository userRepository;
 
-    public CsvService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+  private static final String CSV_CONTENT_TYPE = "text/csv";
+  private static final String FILE_PATH = "/data.csv";
+
+  public CsvService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  @Transactional
+  public void uploadMultipartFile(MultipartFile file) {
+    validateFile(file);
+
+    try (InputStream inputStream = file.getInputStream()) {
+      readAndPersistData(inputStream);
+    } catch (IOException e) {
+      throw new FileProcessingException("Error processing uploaded file: " + e.getMessage());
+    } catch (CsvException e) {
+      throw new CsvProcessingException("Error processing CSV file: " + e.getMessage());
+    }
+  }
+
+  private void readAndPersistData(InputStream inputStream) throws IOException, CsvException {
+    log.info("Starting to upload CSV file...");
+
+    CSVReader csvReader = new CSVReader(new InputStreamReader(inputStream));
+    List<String[]> items = csvReader.readAll();
+
+    if (!items.isEmpty()) {
+      items.removeFirst();
     }
 
-    public void uploadMultipartFile(MultipartFile file) throws IOException, CsvException {
-        try {
-            readAndPersistData(file.getInputStream());
-        } catch (Exception e) {
-            log.error("Error processing CSV file: {}", e.getMessage(), e);
-            throw e;
-        }
+    log.debug("CSV file parsed successfully. Total items found: {}", items.size());
+
+    List<User> users = new ArrayList<>();
+    for (String[] i : items) {
+      User user = new User(i[0], Integer.parseInt(i[1]), i[2]);
+      users.add(user);
     }
 
-    private void readAndPersistData(InputStream inputStream) throws IOException, CsvException {
-        log.info("Starting to upload CSV file...");
+    log.debug("Persisting {} users to the database", users.size());
+    userRepository.saveAll(users);
 
-        CSVReader csvReader = new CSVReader(new InputStreamReader(inputStream));
-        List<String[]> records = csvReader.readAll();
+    log.info("CSV file processed and users persisted successfully.");
+  }
 
-        if (!records.isEmpty()) {
-            records.removeFirst();
-        }
+  @Scheduled(fixedRate = 10000)
+  public void processFileFromLocation() {
+    try (InputStream inputStream = getClass().getResourceAsStream(FILE_PATH)) {
+      if (inputStream == null) {
+        throw new FileProcessingException("Data file not found at: " + FILE_PATH);
+      }
+      readAndPersistData(inputStream);
+    } catch (IOException e) {
+      throw new FileProcessingException("Error processing scheduled file: " + e.getMessage());
+    } catch (CsvException e) {
+      throw new CsvProcessingException("Error processing CSV file: " + e.getMessage());
+    }
+  }
 
-        log.debug("CSV file parsed successfully. Total records found: {}", records.size());
-
-        List<User> users = new ArrayList<>();
-        for (String[] record : records) {
-            User user = new User(record[0], Integer.parseInt(record[1]), record[2]);
-            users.add(user);
-        }
-
-        log.debug("Persisting {} users to the database", users.size());
-        userRepository.saveAll(users);
-
-        log.info("CSV file processed and users persisted successfully.");
+  private void validateFile(MultipartFile file) {
+    if (file.isEmpty()) {
+      throw new InvalidFileException("File is empty");
     }
 
-    @Scheduled(fixedRate = 10000)
-    public void processFileFromLocation() throws IOException, CsvException {
-        try {
-            readAndPersistData(getClass().getResourceAsStream(FILE_PATH));
-        } catch (Exception e) {
-            log.error("Error processing CSV file: {}", e.getMessage(), e);
-            throw e;
-        }
+    if (!CSV_CONTENT_TYPE.equalsIgnoreCase(file.getContentType())) {
+      throw new InvalidFileException("Invalid file type. Only CSV files are allowed");
     }
+  }
 }
