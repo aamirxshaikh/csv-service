@@ -10,6 +10,7 @@ import com.opencsv.exceptions.CsvException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,6 +20,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class CsvService {
@@ -27,6 +30,7 @@ public class CsvService {
 
   private static final String CSV_CONTENT_TYPE = "text/csv";
   private static final String FILE_PATH = "/data.csv";
+  private final Lock fileLock = new ReentrantLock();
 
   public CsvService(UserRepository userRepository) {
     this.userRepository = userRepository;
@@ -69,17 +73,22 @@ public class CsvService {
     log.info("CSV file processed and users persisted successfully.");
   }
 
+  @Async
   @Scheduled(fixedRate = 10000)
   public void processFileFromLocation() {
-    try (InputStream inputStream = getClass().getResourceAsStream(FILE_PATH)) {
-      if (inputStream == null) {
-        throw new FileProcessingException("Data file not found at: " + FILE_PATH);
+    if (fileLock.tryLock()) {
+      try (InputStream inputStream = getClass().getResourceAsStream(FILE_PATH)) {
+        if (inputStream == null) {
+          throw new FileProcessingException("Data file not found at: " + FILE_PATH);
+        }
+        readAndPersistData(inputStream);
+      } catch (IOException e) {
+        throw new FileProcessingException("Error processing scheduled file: " + e.getMessage());
+      } catch (CsvException e) {
+        throw new CsvProcessingException("Error processing CSV file: " + e.getMessage());
+      } finally {
+        fileLock.unlock();
       }
-      readAndPersistData(inputStream);
-    } catch (IOException e) {
-      throw new FileProcessingException("Error processing scheduled file: " + e.getMessage());
-    } catch (CsvException e) {
-      throw new CsvProcessingException("Error processing CSV file: " + e.getMessage());
     }
   }
 
