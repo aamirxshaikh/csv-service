@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -30,7 +31,11 @@ public class CsvService {
 
   private static final String CSV_CONTENT_TYPE = "text/csv";
   private static final String FILE_PATH = "/data.csv";
+  private static final int MAX_CONSECUTIVE_FAILURES = 3;
+
   private final Lock fileLock = new ReentrantLock();
+  private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+  private volatile boolean schedulerEnabled = true;
 
   public CsvService(UserRepository userRepository) {
     this.userRepository = userRepository;
@@ -91,27 +96,62 @@ public class CsvService {
   @Async
   @Scheduled(fixedRate = 10000)
   public void processFileFromLocation() {
-    if (fileLock.tryLock()) {
+    if (!schedulerEnabled) {
+      log.debug("Scheduler is currently disabled");
+      return;
+    }
+
+    if (!fileLock.tryLock()) {
+      log.debug("Skipping execution as file processing is already in progress");
+      return;
+    }
+
+    try {
       try (InputStream inputStream = getClass().getResourceAsStream(FILE_PATH)) {
         if (inputStream == null) {
-          throw new FileProcessingException("Data file not found at: " + FILE_PATH);
+          handleMissingFile();
+          return;
         }
+
         readAndPersistData(inputStream);
-      } catch (IOException e) {
-        throw new FileProcessingException("Error processing scheduled file: " + e.getMessage());
-      } catch (CsvException e) {
-        throw new CsvProcessingException("Error processing CSV file: " + e.getMessage());
-      } finally {
-        fileLock.unlock();
+        resetFailureCounter();
       }
+    } catch (IOException | CsvException e) {
+      handleProcessingError(e);
+    } finally {
+      fileLock.unlock();
     }
   }
 
+  // Handles the case when the scheduled file is missing.
+  private void handleMissingFile() {
+    int failures = consecutiveFailures.incrementAndGet();
+    log.error("Data file not found at: {} (consecutive failures: {}/{})",
+            FILE_PATH, failures, MAX_CONSECUTIVE_FAILURES);
+
+    if (failures >= MAX_CONSECUTIVE_FAILURES) {
+      schedulerEnabled = false;
+      log.error("Disabled scheduler due to {} consecutive failures", failures);
+    }
+  }
+
+  // Resets the consecutive failure counter.
+  private void resetFailureCounter() {
+    consecutiveFailures.set(0);
+    log.debug("Reset consecutive failure counter");
+  }
+
   /**
-   * Validates the uploaded file.
+   * Handles an error that occurred during processing of the scheduled file.
    *
-   * @param file The file to validate
+   * @param e The exception that occurred
    */
+  private void handleProcessingError(Exception e) {
+    log.error("Error processing scheduled file: {}", e.getMessage());
+    consecutiveFailures.set(0); // Reset for transient errors
+  }
+
+  // Validates the uploaded file.
   private void validateFile(MultipartFile file) {
     if (file.isEmpty()) {
       throw new InvalidFileException("File is empty");
