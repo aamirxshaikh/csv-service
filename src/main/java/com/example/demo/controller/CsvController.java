@@ -1,8 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.service.CsvService;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -30,7 +28,7 @@ public class CsvController {
    * @return A response entity with a success message
    */
   @PostMapping("/upload")
-  public ResponseEntity<String> uploadMultipartFile(@RequestParam("file") @Valid @NotEmpty MultipartFile file) {
+  public ResponseEntity<String> uploadMultipartFile(@RequestParam("file") MultipartFile file) {
     log.info("Received file upload request.");
 
     csvService.uploadMultipartFile(file);
